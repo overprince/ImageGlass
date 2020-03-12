@@ -31,6 +31,22 @@ namespace ImageGlass.Heart
 
         #region Load image / thumbnail
 
+        private static Bitmap FromM_N(IMagickImage imgM)
+        {
+            using (var ms = new MemoryStream(imgM.ToByteArray(MagickFormat.Bmp)))
+            {
+                return new Bitmap(ms);
+            }
+        }
+
+        public static byte[] ToM_N(Image img)
+        {
+            using (var stream = new MemoryStream())
+            {
+                img.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                return stream.ToArray();
+            }
+        }
         /// <summary>
         /// Load image from file
         /// </summary>
@@ -92,7 +108,8 @@ namespace ImageGlass.Heart
                     {
                         using (var imgColl = new MagickImageCollection(filename, settings))
                         {
-                            bitmap = imgColl.ToBitmap();
+                            bitmap = FromM_N(imgColl.FirstOrDefault());
+                            //bitmap = imgColl.ToBitmap();
                         }
                     }
                     catch
@@ -128,7 +145,8 @@ namespace ImageGlass.Heart
                     var thumbM = profile.CreateThumbnail();
                     if (thumbM != null)
                     {
-                        bitmap = thumbM.ToBitmap();
+                        bitmap = FromM_N(thumbM);
+//                        bitmap = thumbM.ToBitmap();
                     }
                 }
 
@@ -235,7 +253,8 @@ namespace ImageGlass.Heart
 
                     using (var channelImgM = ApplyColorChannel(imgM))
                     {
-                        bitmap = channelImgM.ToBitmap();
+                        bitmap = FromM_N(channelImgM);
+                        //bitmap = channelImgM.ToBitmap();
                     }
                 }
             }
@@ -355,7 +374,7 @@ namespace ImageGlass.Heart
         /// <param name="quality">JPEG/MIFF/PNG compression level</param>
         public static void SaveImage(Bitmap srcBitmap, string destFileName, int format = (int)MagickFormat.Unknown, int quality = 100)
         {
-            using (var imgM = new MagickImage(srcBitmap))
+            using (var imgM = new MagickImage(ToM_N(srcBitmap)))
             {
                 imgM.Quality = quality;
 
@@ -428,7 +447,8 @@ namespace ImageGlass.Heart
                     imgM.Rotate(degrees);
                     imgM.Quality = 100;
 
-                    bitmap = imgM.ToBitmap();
+                    bitmap = FromM_N(imgM);
+                    //bitmap = imgM.ToBitmap();
                 }
             });
 
@@ -447,12 +467,13 @@ namespace ImageGlass.Heart
 
             await Task.Run(() =>
             {
-                using (var imgM = new MagickImage(srcBitmap))
+                using (var imgM = new MagickImage(ToM_N(srcBitmap)))
                 {
                     imgM.Rotate(degrees);
                     imgM.Quality = 100;
 
-                    bitmap = imgM.ToBitmap();
+                    bitmap = FromM_N(imgM);
+                    //bitmap = imgM.ToBitmap();
                 }
             });
 
@@ -498,7 +519,7 @@ namespace ImageGlass.Heart
 
             await Task.Run(() =>
             {
-                using (var imgM = new MagickImage(srcBitmap))
+                using (var imgM = new MagickImage(ToM_N(srcBitmap)))
                 {
                     bitmap = Flip(imgM, isHorzontal);
                 }
@@ -535,7 +556,8 @@ namespace ImageGlass.Heart
 
             imgM.Quality = 100;
 
-            return imgM.ToBitmap();
+            return FromM_N(imgM);
+            //return imgM.ToBitmap();
         }
 
         #endregion
