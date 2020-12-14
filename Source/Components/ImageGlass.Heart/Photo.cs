@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-using ImageMagick;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -25,6 +24,9 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using ImageMagick;
+using ImageMagick.Formats.Bmp;
+using ImageMagick.Formats.Dng;
 
 namespace ImageGlass.Heart {
     public static class Photo {
@@ -60,13 +62,27 @@ namespace ImageGlass.Heart {
             #region Settings
             if (ext == ".SVG") {
                 settings.BackgroundColor = MagickColors.Transparent;
+                settings.SetDefine("svg:xml-parse-huge", "true");
             }
 
             if (size.Width > 0 && size.Height > 0) {
                 settings.Width = size.Width;
                 settings.Height = size.Height;
             }
+
+
+            // Fixed #708: length and filesize do not match
+            settings.SetDefines(new BmpReadDefines {
+                IgnoreFileSize = true,
+            });
+
+            // Fix RAW color
+            settings.SetDefines(new DngReadDefines() {
+                UseCameraWhitebalance = true,
+            });
+
             #endregion
+
 
             #region Read image data
             switch (ext) {
@@ -95,6 +111,7 @@ namespace ImageGlass.Heart {
 
                 case ".ICO":
                 case ".WEBP":
+                case ".PDF":
                     using (var imgColl = new MagickImageCollection(filename, settings)) {
                         bitmap = imgColl.ToBitmap();
                     }
@@ -106,6 +123,7 @@ namespace ImageGlass.Heart {
                     break;
             }
             #endregion
+
 
             #region Internal Functions 
 
@@ -181,9 +199,8 @@ namespace ImageGlass.Heart {
                     var channelImgM = (MagickImage)imgM.Separate(magickChannel).First();
 
                     if (imgM.HasAlpha && magickChannel != Channels.Alpha) {
-                        using (var alpha = imgM.Separate(Channels.Alpha).First()) {
-                            channelImgM.Composite(alpha, CompositeOperator.CopyAlpha);
-                        }
+                        using var alpha = imgM.Separate(Channels.Alpha).First();
+                        channelImgM.Composite(alpha, CompositeOperator.CopyAlpha);
                     }
 
                     return channelImgM;
@@ -206,10 +223,12 @@ namespace ImageGlass.Heart {
                     imgM = new MagickImage(filename, settings);
                 }
 
+
                 // Issue #679: fix targa display with Magick.NET 7.15.x 
                 if (ext == ".TGA") {
                     imgM.AutoOrient();
                 }
+
 
                 var checkRotation = ext != ".HEIC";
                 (exif, colorProfile) = PreprocesMagickImage(imgM, checkRotation);
@@ -221,6 +240,7 @@ namespace ImageGlass.Heart {
                 imgM.Dispose();
             }
             #endregion
+
 
             return new ImgData() {
                 Image = bitmap,
@@ -296,13 +316,12 @@ namespace ImageGlass.Heart {
         /// <param name="filename">Full path of file</param>
         /// <returns></returns>
         public static Bitmap ConvertFileToBitmap(string filename) {
-            using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read)) {
-                var ms = new MemoryStream();
-                fs.CopyTo(ms);
-                ms.Position = 0;
+            using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
+            var ms = new MemoryStream();
+            fs.CopyTo(ms);
+            ms.Position = 0;
 
-                return new Bitmap(ms, true);
-            }
+            return new Bitmap(ms, true);
         }
 
         /// <summary>
@@ -432,10 +451,10 @@ namespace ImageGlass.Heart {
         /// <param name="quality">JPEG/MIFF/PNG compression level</param>
         public static async Task SaveAsync(string srcFileName, string destFileName, MagickFormat format = MagickFormat.Unknown, int quality = 100) {
             await Task.Run(() => {
-                using (var imgM = new MagickImage(srcFileName)) {
-                    imgM.Quality = quality;
-                    imgM.Write(destFileName, format);
-                }
+                using var imgM = new MagickImage(srcFileName) {
+                    Quality = quality
+                };
+                imgM.Write(destFileName, format);
             }).ConfigureAwait(true);
         }
 
@@ -447,16 +466,15 @@ namespace ImageGlass.Heart {
         /// <param name="format">New image format</param>
         /// <param name="quality">JPEG/MIFF/PNG compression level</param>
         public static void Save(Bitmap srcBitmap, string destFileName, int format = (int)MagickFormat.Unknown, int quality = 100) {
-            using (var imgM = new MagickImage()) {
-                imgM.Read(srcBitmap);
-                imgM.Quality = quality;
+            using var imgM = new MagickImage();
+            imgM.Read(srcBitmap);
+            imgM.Quality = quality;
 
-                if (format != (int)MagickFormat.Unknown) {
-                    imgM.Write(destFileName, (MagickFormat)format);
-                }
-                else {
-                    imgM.Write(destFileName);
-                }
+            if (format != (int)MagickFormat.Unknown) {
+                imgM.Write(destFileName, (MagickFormat)format);
+            }
+            else {
+                imgM.Write(destFileName);
             }
         }
 
@@ -470,21 +488,20 @@ namespace ImageGlass.Heart {
                 // create dirs unless it does not exist
                 Directory.CreateDirectory(destFolder);
 
-                using (var imgColl = new MagickImageCollection(filename)) {
-                    var index = 0;
-                    foreach (var imgM in imgColl) {
-                        index++;
-                        imgM.Quality = 100;
+                using var imgColl = new MagickImageCollection(filename);
+                var index = 0;
+                foreach (var imgM in imgColl) {
+                    index++;
+                    imgM.Quality = 100;
 
-                        try {
-                            var newFilename = Path.GetFileNameWithoutExtension(filename) + " - " +
-                    index.ToString($"D{imgColl.Count.ToString().Length}") + ".png";
-                            var destFilePath = Path.Combine(destFolder, newFilename);
+                    try {
+                        var newFilename = Path.GetFileNameWithoutExtension(filename) + " - " +
+                index.ToString($"D{imgColl.Count.ToString().Length}") + ".png";
+                        var destFilePath = Path.Combine(destFolder, newFilename);
 
-                            imgM.Write(destFilePath, MagickFormat.Png);
-                        }
-                        catch { }
+                        imgM.Write(destFilePath, MagickFormat.Png);
                     }
+                    catch { }
                 }
             }).ConfigureAwait(true);
         }
@@ -505,21 +522,19 @@ namespace ImageGlass.Heart {
             if (!string.IsNullOrEmpty(mimeType)) {
                 byte[] data;
 
-                using (var fs = new FileStream(srcFilename, FileMode.Open, FileAccess.Read)) {
-                    data = new byte[fs.Length];
-                    await fs.ReadAsync(data, 0, (int)fs.Length).ConfigureAwait(true);
+                using var fs = new FileStream(srcFilename, FileMode.Open, FileAccess.Read);
+                data = new byte[fs.Length];
+                await fs.ReadAsync(data, 0, (int)fs.Length).ConfigureAwait(true);
+                fs.Close();
 
-                    fs.Close();
-                }
 
                 var header = $"data:{mimeType};base64,";
                 var base64 = Convert.ToBase64String(data);
 
-                using (var sw = new StreamWriter(destFilename)) {
-                    await sw.WriteAsync(header + base64).ConfigureAwait(true);
-                    await sw.FlushAsync().ConfigureAwait(true);
-                    sw.Close();
-                }
+                using var sw = new StreamWriter(destFilename);
+                await sw.WriteAsync(header + base64).ConfigureAwait(true);
+                await sw.FlushAsync().ConfigureAwait(true);
+                sw.Close();
 
                 return;
             }
@@ -543,18 +558,16 @@ namespace ImageGlass.Heart {
                 format = ImageFormat.Png;
             }
 
-            using (var ms = new MemoryStream()) {
-                srcBitmap.Save(ms, format);
+            using var ms = new MemoryStream();
+            srcBitmap.Save(ms, format);
 
-                var header = $"data:{mimeType};base64,";
-                var base64 = Convert.ToBase64String(ms.ToArray());
+            var header = $"data:{mimeType};base64,";
+            var base64 = Convert.ToBase64String(ms.ToArray());
 
-                using (var sw = new StreamWriter(destFilename)) {
-                    await sw.WriteAsync(header + base64).ConfigureAwait(true);
-                    await sw.FlushAsync().ConfigureAwait(true);
-                    sw.Close();
-                }
-            }
+            using var sw = new StreamWriter(destFilename);
+            await sw.WriteAsync(header + base64).ConfigureAwait(true);
+            await sw.FlushAsync().ConfigureAwait(true);
+            sw.Close();
         }
 
         #endregion
@@ -567,16 +580,15 @@ namespace ImageGlass.Heart {
         /// <param name="srcFileName">Source filename</param>
         /// <param name="degrees">Degrees to rotate</param>
         /// <returns></returns>
-        public static async Task<Bitmap> RotateImage(string srcFileName, int degrees) {
+        public static async Task<Bitmap> RotateImageAsync(string srcFileName, int degrees) {
             Bitmap bitmap = null;
 
             await Task.Run(() => {
-                using (var imgM = new MagickImage(srcFileName)) {
-                    imgM.Rotate(degrees);
-                    imgM.Quality = 100;
+                using var imgM = new MagickImage(srcFileName);
+                imgM.Rotate(degrees);
+                imgM.Quality = 100;
 
-                    bitmap = imgM.ToBitmap();
-                }
+                bitmap = imgM.ToBitmap();
             }).ConfigureAwait(true);
 
             return bitmap;
@@ -588,17 +600,16 @@ namespace ImageGlass.Heart {
         /// <param name="srcBitmap">Source bitmap</param>
         /// <param name="degrees">Degrees to rotate</param>
         /// <returns></returns>
-        public static async Task<Bitmap> RotateImage(Bitmap srcBitmap, int degrees) {
+        public static async Task<Bitmap> RotateImageAsync(Bitmap srcBitmap, int degrees) {
             Bitmap bitmap = null;
 
             await Task.Run(() => {
-                using (var imgM = new MagickImage()) {
-                    imgM.Read(srcBitmap);
-                    imgM.Rotate(degrees);
-                    imgM.Quality = 100;
+                using var imgM = new MagickImage();
+                imgM.Read(srcBitmap);
+                imgM.Rotate(degrees);
+                imgM.Quality = 100;
 
-                    bitmap = imgM.ToBitmap();
-                }
+                bitmap = imgM.ToBitmap();
             }).ConfigureAwait(true);
 
             return bitmap;
@@ -614,13 +625,12 @@ namespace ImageGlass.Heart {
         /// <param name="srcFileName">Source filename</param>
         /// <param name="isHorzontal">Reflect each scanline in the horizontal/vertical direction</param>
         /// <returns></returns>
-        public static async Task<Bitmap> Flip(string srcFileName, bool isHorzontal) {
+        public static async Task<Bitmap> FlipAsync(string srcFileName, bool isHorzontal) {
             Bitmap bitmap = null;
 
             await Task.Run(() => {
-                using (var imgM = new MagickImage(srcFileName)) {
-                    bitmap = Flip(imgM, isHorzontal);
-                }
+                using var imgM = new MagickImage(srcFileName);
+                bitmap = Flip(imgM, isHorzontal);
             }).ConfigureAwait(true);
 
             return bitmap;
@@ -632,14 +642,13 @@ namespace ImageGlass.Heart {
         /// <param name="srcBitmap">Source bitmap</param>
         /// <param name="isHorzontal">Reflect each scanline in the horizontal/vertical direction</param>
         /// <returns></returns>
-        public static async Task<Bitmap> Flip(Bitmap srcBitmap, bool isHorzontal) {
+        public static async Task<Bitmap> FlipAsync(Bitmap srcBitmap, bool isHorzontal) {
             Bitmap bitmap = null;
 
             await Task.Run(() => {
-                using (var imgM = new MagickImage()) {
-                    imgM.Read(srcBitmap);
-                    bitmap = Flip(imgM, isHorzontal);
-                }
+                using var imgM = new MagickImage();
+                imgM.Read(srcBitmap);
+                bitmap = Flip(imgM, isHorzontal);
             }).ConfigureAwait(true);
 
             return bitmap;

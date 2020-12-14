@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -17,11 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-using ImageGlass.Base;
-using ImageGlass.Library;
-using ImageGlass.Settings;
-using ImageGlass.UI;
-using ImageGlass.UI.Renderers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -29,9 +24,14 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ImageGlass.Base;
+using ImageGlass.Library;
+using ImageGlass.Library.Image;
+using ImageGlass.Settings;
+using ImageGlass.UI;
+using ImageGlass.UI.Renderers;
 
 namespace ImageGlass {
     public partial class frmSetting: Form {
@@ -41,8 +41,13 @@ namespace ImageGlass {
             imglGeneral.ImageSize = new Size(10, DPIScaling.Transform(30));
             imglGeneral.Images.Add("_blank", new Bitmap(10, DPIScaling.Transform(30)));
 
-            txtZoomLevels.KeyPress += TxtZoomLevels_KeyPress; // Filter user input for zoom levels
+            // Filter user input for zoom levels
+            txtZoomLevels.KeyPress += TxtZoomLevels_KeyPress;
+
+            // Apply theme
+            Configs.ApplyFormTheme(this, Configs.Theme);
         }
+
 
         #region PROPERTIES
         private readonly Color M_COLOR_MENU_SELECTED = Color.FromArgb(255, 198, 203, 204);
@@ -50,7 +55,7 @@ namespace ImageGlass {
         private readonly Color M_COLOR_MENU_HOVER = Color.FromArgb(255, 176, 181, 183);
         private readonly Color M_COLOR_MENU_NORMAL = Color.FromArgb(255, 160, 165, 168);
 
-        private List<Language> lstLanguages = new List<Language>();
+        private List<Language> lstLanguages = new();
 
         #region Toolbar
         private string _separatorText; // Text used in lists to represent separator bar
@@ -111,12 +116,12 @@ namespace ImageGlass {
 
             // Load config
             // Windows Bound (Position + Size)-------------------------------------------
-            Bounds = Configs.FrmSettingsWindowsBound;
+            Bounds = Configs.FrmSettingsWindowBound;
 
             // windows state--------------------------------------------------------------
             WindowState = Configs.FrmSettingsWindowState;
 
-            InitLanguagePack(); // Needs to be done before setting up the initial tab
+            LoadLanguagePack(); // Needs to be done before setting up the initial tab
 
             // Get the last view of tab --------------------------------------------------
             tab1.SelectedIndex = Local.SettingsTabLastView;
@@ -135,7 +140,7 @@ namespace ImageGlass {
             // Save config---------------------------------
             if (WindowState == FormWindowState.Normal) {
                 // Windows Bound---------------------------------------------------
-                Configs.FrmSettingsWindowsBound = Bounds;
+                Configs.FrmSettingsWindowBound = Bounds;
             }
 
             Configs.FrmSettingsWindowState = WindowState;
@@ -160,7 +165,7 @@ namespace ImageGlass {
         /// <summary>
         /// Load language pack
         /// </summary>
-        private void InitLanguagePack() {
+        private void LoadLanguagePack() {
             var lang = Configs.Language.Items;
 
             RightToLeft = Configs.Language.IsRightToLeftLayout;
@@ -222,6 +227,7 @@ namespace ImageGlass {
             chkIsCenterImage.Text = lang[$"{Name}.{nameof(chkIsCenterImage)}"];
             lblImageLoadingOrder.Text = lang[$"{Name}.{nameof(lblImageLoadingOrder)}"];
             chkUseFileExplorerSortOrder.Text = lang[$"{Name}.{nameof(chkUseFileExplorerSortOrder)}"];
+            chkGroupByDirectory.Text = lang[$"{Name}.{nameof(chkGroupByDirectory)}"];
             lblImageBoosterCachedCount.Text = lang[$"{Name}.{nameof(lblImageBoosterCachedCount)}"];
 
             lblColorManagement.Text = lang[$"{Name}.{nameof(lblColorManagement)}"];//
@@ -256,6 +262,9 @@ namespace ImageGlass {
             #region EDIT TAB
             chkSaveOnRotate.Text = lang[$"{Name}.{nameof(chkSaveOnRotate)}"];
             chkSaveModifyDate.Text = lang[$"{Name}.{nameof(chkSaveModifyDate)}"];
+            lblAfterEditingApp.Text = lang[$"{Name}.{nameof(lblAfterEditingApp)}"];
+            lblImageQuality.Text = lang[$"{Name}.{nameof(lblImageQuality)}"];
+
             lblSelectAppForEdit.Text = lang[$"{Name}.{nameof(lblSelectAppForEdit)}"];
             btnEditEditExt.Text = lang[$"{Name}.{nameof(btnEditEditExt)}"];
             btnEditResetExt.Text = lang[$"{Name}.{nameof(btnEditResetExt)}"];
@@ -272,8 +281,9 @@ namespace ImageGlass {
             lnkOpenFileAssoc.Text = lang[$"{Name}.{nameof(lnkOpenFileAssoc)}"];
             btnAddNewExt.Text = lang[$"{Name}.{nameof(btnAddNewExt)}"];
             btnDeleteExt.Text = lang[$"{Name}.{nameof(btnDeleteExt)}"];
-            btnRegisterExt.Text = lang[$"{Name}.{nameof(btnRegisterExt)}"];
             btnResetExt.Text = lang[$"{Name}.{nameof(btnResetExt)}"];
+            btnRegisterExt.Text = lang[$"{Name}.{nameof(btnRegisterExt)}"];
+            btnUnregisterExt.Text = lang[$"{Name}.{nameof(btnUnregisterExt)}"];
             #endregion
 
             #region LANGUAGE TAB
@@ -288,7 +298,9 @@ namespace ImageGlass {
 
             #region TOOLBAR TAB
             lblToolbarPosition.Text = lang[$"{Name}.{nameof(lblToolbarPosition)}"];
+            lblToolbarIconHeight.Text = lang[$"{Name}.{nameof(lblToolbarIconHeight)}"];
             chkHorzCenterToolbarBtns.Text = lang[$"{Name}.{nameof(chkHorzCenterToolbarBtns)}"];
+            chkHideTooltips.Text = lang[$"{Name}.{nameof(chkHideTooltips)}"];
 
             _separatorText = lang[$"{Name}._separator"];
             lblUsedBtns.Text = lang[$"{Name}.{nameof(lblUsedBtns)}"];
@@ -306,9 +318,14 @@ namespace ImageGlass {
             chkColorUseRGBA.Text = lang[$"{Name}.{nameof(chkColorUseRGBA)}"];
             chkColorUseHEXA.Text = lang[$"{Name}.{nameof(chkColorUseHEXA)}"];
             chkColorUseHSLA.Text = lang[$"{Name}.{nameof(chkColorUseHSLA)}"];
+            chkColorUseHSVA.Text = lang[$"{Name}.{nameof(chkColorUseHSVA)}"];
 
             lblPageNav.Text = lang[$"{nameof(frmMain)}.mnuMainPageNav"];
             chkShowPageNavAuto.Text = lang[$"{Name}.{nameof(chkShowPageNavAuto)}"];
+
+            lblExifTool.Text = lang[$"{nameof(frmMain)}.mnuExifTool"] + " (https://exiftool.org)";
+            chkExifToolAlwaysOnTop.Text = lang[$"{Name}.{nameof(chkExifToolAlwaysOnTop)}"];
+            lnkSelectExifTool.Text = lang[$"{Name}.{nameof(lnkSelectExifTool)}"];
             #endregion
 
             #region THEME TAB
@@ -524,12 +541,15 @@ namespace ImageGlass {
             // Set value of chkUseFileExplorerSortOrder
             chkUseFileExplorerSortOrder.Checked = Configs.IsUseFileExplorerSortOrder;
 
+            // Set value of chkGroupByDirectory
+            chkGroupByDirectory.Checked = Configs.IsGroupImagesByDirectory;
+
             #region Load items of cmbImageOrder
             var loadingOrderList = Enum.GetNames(typeof(ImageOrderBy));
             cmbImageOrder.Items.Clear();
 
             foreach (var item in loadingOrderList) {
-                cmbImageOrder.Items.Add(Configs.Language.Items[$"{this.Name}.cmbImageOrder._{item}"]);
+                cmbImageOrder.Items.Add(Configs.Language.Items[$"_.{nameof(ImageOrderBy)}._{item}"]);
             }
 
             //Get value of cmbImageOrder
@@ -541,7 +561,7 @@ namespace ImageGlass {
             cmbImageOrderType.Items.Clear();
 
             foreach (var item in orderTypesList) {
-                cmbImageOrderType.Items.Add(Configs.Language.Items[$"{this.Name}.cmbImageOrderType._{item}"]);
+                cmbImageOrderType.Items.Add(Configs.Language.Items[$"_.{nameof(ImageOrderType)}._{item}"]);
             }
 
             //Get value of cmbImageOrder
@@ -744,6 +764,20 @@ namespace ImageGlass {
         private void LoadTabEditConfig() {
             chkSaveOnRotate.Checked = Configs.IsSaveAfterRotating;
             chkSaveModifyDate.Checked = Configs.IsPreserveModifiedDate;
+            numImageQuality.Value = Configs.ImageEditQuality;
+
+            #region Load items of cmbAfterEditingApp
+            var actionsList = Enum.GetNames(typeof(AfterOpeningEditAppAction));
+            cmbAfterEditingApp.Items.Clear();
+
+            foreach (var item in actionsList) {
+                cmbAfterEditingApp.Items.Add(Configs.Language.Items[$"_.{nameof(AfterOpeningEditAppAction)}._{item}"]);
+            }
+
+            // Get value of cmbAfterEditingApp
+            cmbAfterEditingApp.SelectedIndex = (int)Configs.AfterEditingAction;
+            #endregion
+
 
             // Load image editing apps list
             LoadEditApps();
@@ -945,7 +979,9 @@ namespace ImageGlass {
             }
 
             foreach (var ext in Configs.AllFormats) {
+                var extDisplay = ext.Substring(1).ToUpper();
                 var li = new ListViewItem(ext);
+                _ = li.SubItems.Add($"ImageGlass {extDisplay} File");
 
                 lvExtension.Items.Add(li);
             }
@@ -1043,6 +1079,38 @@ namespace ImageGlass {
             RegisterFileAssociations();
         }
 
+        private void BtnUnregisteredExt_Click(object sender, EventArgs e) {
+            try {
+                using var p = new Process();
+                var isError = true;
+
+                p.StartInfo.FileName = App.StartUpDir("igtasks.exe");
+                p.StartInfo.Arguments = $"delassociations";
+                p.Start();
+
+                try {
+                    p.Start();
+                }
+                catch {
+                    // Clicking 'Cancel' in the "User Account Control" dialog throws a
+                    // "User cancelled" exception. Just continue quietly in that case.
+                    return;
+                }
+
+                p.WaitForExit();
+                isError = p.ExitCode != 0;
+
+                if (isError) {
+                    MessageBox.Show(Configs.Language.Items[$"{Name}._UnregisterAppExtensions_Error"], "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else {
+                    MessageBox.Show(Configs.Language.Items[$"{Name}._UnregisterAppExtensions_Success"], "", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch { }
+
+        }
+
         private void lvExtension_SelectedIndexChanged(object sender, EventArgs e) {
             btnDeleteExt.Enabled = (lvExtension.SelectedItems.Count > 0);
         }
@@ -1076,6 +1144,8 @@ namespace ImageGlass {
 
             cmbToolbarPosition.SelectedIndex = (int)Configs.ToolbarPosition;
             chkHorzCenterToolbarBtns.Checked = Configs.IsCenterToolbar;
+            chkHideTooltips.Checked = Configs.IsHideTooltips;
+            numToolbarIconHeight.Value = (int)Configs.ToolbarIconHeight;
 
             // Apply Windows System theme to listview
             SystemRenderer.ApplyTheme(lvAvailButtons);
@@ -1100,7 +1170,7 @@ namespace ImageGlass {
             if (_lstToolbarImg != null)
                 return;
 
-            var iconHeight = ThemeImage.GetCorrectBaseIconHeight();
+            var iconHeight = DPIScaling.Transform(Constants.DEFAULT_TOOLBAR_ICON_HEIGHT);
             _lstToolbarImg = new ImageList {
                 ColorDepth = ColorDepth.Depth32Bit, // max out image quality
                 ImageSize = new Size(iconHeight, iconHeight)
@@ -1258,7 +1328,7 @@ namespace ImageGlass {
         /// <param name="lv"></param>
         private void UpdateButtonsListViewItemSize(ListView lv) {
             var width = (int)(lv.Width * 0.85); // reserve right gap for multiple selection
-            var height = ThemeImage.GetCorrectBaseIconHeight() * 2;
+            var height = DPIScaling.Transform(Constants.DEFAULT_TOOLBAR_ICON_HEIGHT * 2);
 
             lv.TileSize = new Size(width, height);
 
@@ -1372,8 +1442,36 @@ namespace ImageGlass {
             chkColorUseRGBA.Checked = Configs.IsColorPickerRGBA;
             chkColorUseHEXA.Checked = Configs.IsColorPickerHEXA;
             chkColorUseHSLA.Checked = Configs.IsColorPickerHSLA;
+            chkColorUseHSVA.Checked = Configs.IsColorPickerHSVA;
 
             chkShowPageNavAuto.Checked = Configs.IsShowPageNavAuto;
+
+            chkExifToolAlwaysOnTop.Checked = Configs.IsExifToolAlwaysOnTop;
+            lblExifToolPath.Text = Configs.ExifToolExePath;
+        }
+
+        private void lnkSelectExifTool_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
+            var ofd = new OpenFileDialog() {
+                CheckFileExists = true,
+                Filter = "exiftool.exe file|*.exe",
+            };
+
+            if (ofd.ShowDialog() == DialogResult.OK) {
+                var exif = new ExifToolWrapper(ofd.FileName);
+
+                if (!exif.CheckExists()) {
+                    var msg = string.Format(
+                        Configs.Language.Items[$"{Name}.{nameof(lnkSelectExifTool)}._NotFound"],
+                        ofd.FileName);
+
+                    MessageBox.Show(msg, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else {
+                    Configs.ExifToolExePath =
+                        lblExifToolPath.Text =
+                        ofd.FileName;
+                }
+            }
         }
 
         #endregion
@@ -1383,103 +1481,76 @@ namespace ImageGlass {
             if (lvTheme.Items.Count == 0) {
                 SystemRenderer.ApplyTheme(lvTheme);
 
-                RefreshThemeList();
+                _ = RefreshThemeListAsync();
             }
         }
 
-        private async void RefreshThemeList() {
-            var themeFolder = App.ConfigDir(PathType.Dir, Dir.Themes);
-
+        private async Task RefreshThemeListAsync() {
             lvTheme.Items.Clear();
-            lvTheme.Items.Add("2017 (Dark)").Tag = "default";
             lvTheme.Enabled = false;
             this.Cursor = Cursors.WaitCursor;
 
-            SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
+            // get default theme dir
+            var defaultThemePath = App.StartUpDir(Dir.Themes, Constants.DEFAULT_THEME, Theme.CONFIG_FILE);
 
-            if (Directory.Exists(themeFolder)) {
-                var lstThemes = new List<UI.Theme>();
+            // load all theme packs, sorted the default theme first
+            var lstThemes = (await Theme.GetAllThemePacksAsync())
+                .OrderBy(i => i.ConfigFilePath != defaultThemePath)
+                .ToList();
 
-                await Task.Run(() => {
-                    foreach (var d in Directory.GetDirectories(themeFolder)) {
-                        var configFile = Path.Combine(d, "igtheme.xml");
+            // add themes to the listview
+            for (var i = 0; i < lstThemes.Count(); i++) {
+                var isDefault = i == 0;
+                var th = lstThemes[i];
+                var themePath = Path.GetDirectoryName(th.ConfigFilePath);
+                var themeName = th.Name + (isDefault ? " ⭐⭐⭐" : "");
 
-                        if (File.Exists(configFile)) {
-                            var th = new Theme(d);
+                var lvi = new ListViewItem(themeName) {
+                    // store full path of theme
+                    Tag = themePath,
+                    ImageKey = "_blank",
+                    ToolTipText = themePath,
+                };
 
-                            //invalid theme
-                            if (!th.IsValid) {
-                                continue;
-                            }
-
-                            lstThemes.Add(th);
-                        }
-                    }
-                }).ConfigureAwait(true);
-
-                // add themes to the listview
-                foreach (var th in lstThemes) {
-                    var lvi = new ListViewItem(th.Name) {
-                        // folder name of the theme
-                        Tag = Path.GetFileName(Path.GetDirectoryName(th.ConfigFilePath)),
-                        ImageKey = "_blank"
-                    };
-
-                    if (Configs.Theme.ConfigFilePath == th.ConfigFilePath) {
-                        lvi.Selected = true;
-                        lvi.Checked = true;
-                    }
-
-                    lvTheme.Items.Add(lvi);
+                if (Configs.Theme.ConfigFilePath == th.ConfigFilePath) {
+                    lvi.Selected = true;
+                    lvi.Checked = true;
                 }
 
-                //select the default theme
-                if (lvTheme.Items.Count > 0 && lvTheme.SelectedItems.Count == 0) {
-                    lvTheme.Items[0].Selected = true;
-                }
+                lvTheme.Items.Add(lvi);
             }
-            else {
-                Directory.CreateDirectory(themeFolder);
-            }
+
 
             lvTheme.Enabled = true;
             this.Cursor = Cursors.Default;
 
-            lblInstalledThemes.Text = string.Format(Configs.Language.Items[$"{this.Name}.lblInstalledThemes"], lvTheme.Items.Count.ToString());
+            lblInstalledThemes.Text = string.Format(Configs.Language.Items[$"{Name}.lblInstalledThemes"], lvTheme.Items.Count.ToString());
         }
 
         private void btnThemeRefresh_Click(object sender, EventArgs e) {
-            RefreshThemeList();
+            _ = RefreshThemeListAsync();
         }
 
         private void lvTheme_SelectedIndexChanged(object sender, EventArgs e) {
             var lang = Configs.Language.Items;
 
             if (lvTheme.SelectedIndices.Count > 0) {
+                var defaultThemeDir = App.StartUpDir(Dir.Themes, Constants.DEFAULT_THEME);
+                var themeDir = lvTheme.SelectedItems[0].Tag.ToString();
+                var th = new Theme((int)Configs.ToolbarIconHeight, themeDir);
+
                 btnThemeSaveAs.Enabled = true;
-                btnThemeUninstall.Enabled = true;
-
-                var themeName = lvTheme.SelectedItems[0].Tag.ToString();
-                Theme th;
-                if (themeName == "default") {
-                    //btnThemeSaveAs.Enabled = false;
-                    btnThemeUninstall.Enabled = false;
-                    th = new Theme();
-                }
-                else {
-                    th = new Theme(App.ConfigDir(PathType.Dir, Dir.Themes, themeName));
-                }
-
+                btnThemeUninstall.Enabled = defaultThemeDir.CompareTo(themeDir) != 0;
                 picPreview.BackgroundImage = th.PreviewImage.Image;
 
                 txtThemeInfo.Text =
-                    $"{lang[$"{this.Name}.txtThemeInfo._Name"]}: {th.Name}\r\n" +
-                    $"{lang[$"{this.Name}.txtThemeInfo._Version"]}: {th.Version}\r\n" +
-                    $"{lang[$"{this.Name}.txtThemeInfo._Author"]}: {th.Author}\r\n" +
-                    $"{lang[$"{this.Name}.txtThemeInfo._Email"]}: {th.Email}\r\n" +
-                    $"{lang[$"{this.Name}.txtThemeInfo._Website"]}: {th.Website}\r\n" +
-                    $"{lang[$"{this.Name}.txtThemeInfo._Compatibility"]}: {th.Compatibility}\r\n" +
-                    $"{lang[$"{this.Name}.txtThemeInfo._Description"]}: {th.Description}";
+                    $"{lang[$"{Name}.txtThemeInfo._Name"]}: {th.Name}\r\n" +
+                    $"{lang[$"{Name}.txtThemeInfo._Version"]}: {th.Version}\r\n" +
+                    $"{lang[$"{Name}.txtThemeInfo._Author"]}: {th.Author}\r\n" +
+                    $"{lang[$"{Name}.txtThemeInfo._Email"]}: {th.Email}\r\n" +
+                    $"{lang[$"{Name}.txtThemeInfo._Website"]}: {th.Website}\r\n" +
+                    $"{lang[$"{Name}.txtThemeInfo._Compatibility"]}: {th.ConfigVersion}\r\n" +
+                    $"{lang[$"{Name}.txtThemeInfo._Description"]}: {th.Description}";
 
                 txtThemeInfo.Visible = true;
             }
@@ -1497,10 +1568,10 @@ namespace ImageGlass {
                 Filter = "ImageGlass theme (*.igtheme)|*.igtheme|All files (*.*)|*.*"
             };
             if (o.ShowDialog() == DialogResult.OK && File.Exists(o.FileName)) {
-                var result = UI.Theme.InstallTheme(o.FileName);
+                var result = Theme.InstallTheme(o.FileName);
 
                 if (result == ThemeInstallingResult.SUCCESS) {
-                    RefreshThemeList();
+                    _ = RefreshThemeListAsync();
 
                     MessageBox.Show(Configs.Language.Items[$"{Name}.btnThemeInstall._Success"], "", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1512,11 +1583,11 @@ namespace ImageGlass {
 
         private void btnThemeUninstall_Click(object sender, EventArgs e) {
             if (lvTheme.SelectedItems.Count > 0) {
-                var themeName = lvTheme.SelectedItems[0].Tag.ToString();
-                var result = UI.Theme.UninstallTheme(themeName);
+                var themeDir = lvTheme.SelectedItems[0].Tag.ToString();
+                var result = Theme.UninstallTheme(themeDir);
 
                 if (result == ThemeUninstallingResult.SUCCESS) {
-                    RefreshThemeList();
+                    _ = RefreshThemeListAsync();
                 }
                 else if (result == ThemeUninstallingResult.ERROR) {
                     MessageBox.Show(Configs.Language.Items[$"{Name}.btnThemeUninstall._Error"], "", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1538,15 +1609,8 @@ namespace ImageGlass {
                 };
 
                 if (s.ShowDialog() == DialogResult.OK) {
-                    var themeName = lvTheme.SelectedItems[0].Tag.ToString();
-                    var configFilePath = App.ConfigDir(PathType.File, Dir.Themes, themeName, "igtheme.xml");
-
-                    if (!File.Exists(configFilePath)) {
-                        configFilePath = App.StartUpDir(@"DefaultTheme\igtheme.xml");
-                    }
-
-                    var themeDir = Path.GetDirectoryName(configFilePath);
-                    var result = UI.Theme.PackTheme(themeDir, s.FileName);
+                    var themeDir = lvTheme.SelectedItems[0].Tag.ToString();
+                    var result = Theme.PackTheme(themeDir, s.FileName);
 
                     if (result == ThemePackingResult.SUCCESS) {
                         MessageBox.Show(string.Format(Configs.Language.Items[$"{Name}.btnThemeSaveAs._Success"], s.FileName), "", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1565,10 +1629,9 @@ namespace ImageGlass {
 
         private void btnThemeApply_Click(object sender, EventArgs e) {
             if (lvTheme.SelectedItems.Count > 0) {
-                var themeFolderName = lvTheme.SelectedItems[0].Tag.ToString();
-                var themeFolderPath = App.ConfigDir(PathType.Dir, Dir.Themes, themeFolderName);
+                var themeDir = lvTheme.SelectedItems[0].Tag.ToString();
 
-                var th = new Theme(themeFolderPath);
+                var th = new Theme((int)Configs.ToolbarIconHeight, themeDir);
 
                 if (th.IsValid) {
                     Configs.Theme = th;
@@ -1577,6 +1640,9 @@ namespace ImageGlass {
                         Configs.Theme.BackgroundColor;
 
                     Local.ForceUpdateActions |= ForceUpdateActions.THEME;
+
+                    // Apply theme
+                    Configs.ApplyFormTheme(this, Configs.Theme);
 
                     MessageBox.Show(Configs.Language.Items[$"{Name}.btnThemeApply._Success"], "", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1827,6 +1893,10 @@ namespace ImageGlass {
             }
 
             Configs.IsUseFileExplorerSortOrder = chkUseFileExplorerSortOrder.Checked;
+            if (Configs.IsGroupImagesByDirectory != chkGroupByDirectory.Checked) {
+                Configs.IsGroupImagesByDirectory = chkGroupByDirectory.Checked;
+                Local.ForceUpdateActions |= ForceUpdateActions.IMAGE_LIST;
+            }
 
             #endregion
 
@@ -1935,6 +2005,13 @@ namespace ImageGlass {
             #region Edit tab -----------------------------------------------
             Configs.IsSaveAfterRotating = chkSaveOnRotate.Checked;
             Configs.IsPreserveModifiedDate = chkSaveModifyDate.Checked;
+            Configs.ImageEditQuality = (int)numImageQuality.Value;
+
+            // AfterEditingAction
+            if (Enum.TryParse(cmbAfterEditingApp.SelectedIndex.ToString(), out AfterOpeningEditAppAction newAction)) {
+                Configs.AfterEditingAction = newAction;
+            }
+
             #endregion
 
             #region Language tab -------------------------------------------
@@ -1977,6 +2054,24 @@ namespace ImageGlass {
             }
             #endregion
 
+            #region HideToolbarTooltips: MainFormForceUpdateAction.TOOLBAR_POSITION
+            newBool = chkHideTooltips.Checked;
+
+            if (Configs.IsHideTooltips != newBool) {
+                Configs.IsHideTooltips = newBool;
+                Local.ForceUpdateActions |= ForceUpdateActions.TOOLBAR_POSITION;
+            }
+            #endregion
+
+            #region ToolbarIconHeight: MainFormForceUpdateAction.TOOLBAR_ICON_HEIGHT
+            newUInt = (uint)numToolbarIconHeight.Value;
+
+            if (Configs.ToolbarIconHeight != newUInt) {
+                Configs.ToolbarIconHeight = newUInt;
+                Local.ForceUpdateActions |= ForceUpdateActions.TOOLBAR_ICON_HEIGHT;
+            }
+            #endregion
+
             ApplyToolbarChanges();
             #endregion
 
@@ -1984,8 +2079,10 @@ namespace ImageGlass {
             Configs.IsColorPickerRGBA = chkColorUseRGBA.Checked;
             Configs.IsColorPickerHEXA = chkColorUseHEXA.Checked;
             Configs.IsColorPickerHSLA = chkColorUseHSLA.Checked;
+            Configs.IsColorPickerHSVA = chkColorUseHSVA.Checked;
 
             Configs.IsShowPageNavAuto = chkShowPageNavAuto.Checked;
+            Configs.IsExifToolAlwaysOnTop = chkExifToolAlwaysOnTop.Checked;
             #endregion
 
             SaveKeyboardSettings();

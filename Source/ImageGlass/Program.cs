@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -17,9 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-using ImageGlass.Base;
-using ImageGlass.Services.InstanceManagement;
-using ImageGlass.Settings;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -27,6 +24,9 @@ using System.Runtime;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ImageGlass.Base;
+using ImageGlass.Services.InstanceManagement;
+using ImageGlass.Settings;
 
 namespace ImageGlass {
     internal static class Program {
@@ -49,6 +49,12 @@ namespace ImageGlass {
             SEM_NOOPENFILEERRORBOX = 1 << 15
         }
 
+        // Issues #774, #855 : using this method is the ONLY way to successfully restore from minimized state!
+        [DllImport("user32.dll")]
+        private static extern int ShowWindow(IntPtr hWnd, uint msg);
+
+        private const uint SW_RESTORE = 0x09;
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -58,18 +64,19 @@ namespace ImageGlass {
             // This _must_ be executed first!
             SetErrorMode(ErrorModes.SEM_FAILCRITICALERRORS);
 
-            // Load user configs
-            Configs.Load();
-
             // Set up Startup Profile to improve launch performance
             // https://blogs.msdn.microsoft.com/dotnet/2012/10/18/an-easy-solution-for-improving-app-launch-performance/
             ProfileOptimization.SetProfileRoot(App.ConfigDir(PathType.Dir));
             ProfileOptimization.StartProfile("igstartup.profile");
 
+            // Load user configs
+            Configs.Load();
+
             SetProcessDPIAware();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
 
             #region Check config file compatibility
             if (!Configs.IsCompatible) {
@@ -87,22 +94,23 @@ namespace ImageGlass {
             }
             #endregion
 
+
             #region Check First-launch Configs
             if (Configs.FirstLaunchVersion < Constants.FIRST_LAUNCH_VERSION) {
-                using (var p = new Process()) {
-                    p.StartInfo.FileName = App.StartUpDir("igcmd.exe");
-                    p.StartInfo.Arguments = "firstlaunch";
+                using var p = new Process();
+                p.StartInfo.FileName = App.StartUpDir("igcmd.exe");
+                p.StartInfo.Arguments = "firstlaunch";
 
-                    try {
-                        p.Start();
-                    }
-                    catch { }
+                try {
+                    p.Start();
                 }
+                catch { }
 
                 Application.Exit();
                 return;
             }
             #endregion
+
 
             #region Auto check for update
             if (Configs.AutoUpdate != "0") {
@@ -119,6 +127,7 @@ namespace ImageGlass {
                 }
             }
             #endregion
+
 
             #region Multi instances
             // check if allows multi instances
@@ -137,7 +146,7 @@ namespace ImageGlass {
                     Application.Run(formMain = new frmMain());
                 }
                 else {
-                    _ = singleInstance.PassArgumentsToFirstInstance(Environment.GetCommandLineArgs());
+                    _ = singleInstance.PassArgumentsToFirstInstanceAsync(Environment.GetCommandLineArgs());
                 }
             } //end check multi instances
             #endregion
@@ -149,24 +158,30 @@ namespace ImageGlass {
                 return;
 
             Action<string[]> UpdateForm = arguments => {
-                formMain.WindowState = FormWindowState.Normal;
+
+                // Issues #774, #855 : if IG is normal or maximized, do nothing. If IG is minimized,
+                // restore it to previous state.
+                if (formMain.WindowState == FormWindowState.Minimized) {
+                    ShowWindow(formMain.Handle, SW_RESTORE);
+                }
+
                 formMain.LoadFromParams(arguments);
             };
 
             // KBR 20181009 Attempt to run a 2nd instance of IG when multi-instance turned off. Primary instance
             // will crash if no file provided (e.g. by double-clicking on .EXE in explorer).
-            var realcount = 0;
+            var realCount = 0;
             foreach (var arg in e.Args) {
                 if (arg != null) {
-                    realcount++;
+                    realCount++;
                 }
             }
 
-            var realargs = new string[realcount];
-            Array.Copy(e.Args, realargs, realcount);
+            var realArgs = new string[realCount];
+            Array.Copy(e.Args, realArgs, realCount);
 
             // Execute our delegate on the forms thread!
-            formMain.Invoke(UpdateForm, (object)realargs);
+            formMain.Invoke(UpdateForm, (object)realArgs);
 
             // send our Win32 message to bring ImageGlass dialog to top
             NativeMethods.PostMessage((IntPtr)NativeMethods.HWND_BROADCAST, NativeMethods.WM_SHOWME, IntPtr.Zero, IntPtr.Zero);

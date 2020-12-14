@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -120,7 +120,7 @@ namespace ImageGlass.Heart {
             // start background service worker
             IsRunWorker = true;
             var _bw = new BackgroundWorker();
-            _bw.RunWorkerAsync(StartImageBooster());
+            _bw.RunWorkerAsync(StartImageBoosterAsync());
         }
 
         #region PRIVATE FUNCTIONS
@@ -193,7 +193,7 @@ namespace ImageGlass.Heart {
         /// <summary>
         /// Start ImageBooster thread
         /// </summary>
-        public async Task StartImageBooster() {
+        public async Task StartImageBoosterAsync() {
             while (IsRunWorker) {
                 if (QueuedList.Count > 0) {
                     // pop out the first item

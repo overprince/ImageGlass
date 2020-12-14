@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -16,11 +16,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-using ImageGlass.Base;
-using ImageGlass.Settings;
 using System;
 using System.IO;
 using System.Windows.Forms;
+using ImageGlass.Base;
+using ImageGlass.Settings;
 
 namespace ImageGlass {
     public partial class frmEditApp: Form {

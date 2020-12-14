@@ -17,7 +17,7 @@ Issues solved:
 
 Part of
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -47,7 +47,17 @@ namespace ImageGlass.UI {
         private ToolTip _tooltip;
         public int ToolTipInterval = 4000;
         public string ToolTipText;
-        public bool ToolTipShowUp;
+
+        /// <summary>
+        /// Gets, sets value indicates that the tooltip direction is top or bottom
+        /// </summary>
+        public bool ToolTipShowUp { get; set; } = false;
+
+
+        /// <summary>
+        /// Gets, sets value indicates that the tooltip is shown
+        /// </summary>
+        public bool HideTooltips { get; set; } = false;
 
         private ToolbarAlignment _alignment;
 
@@ -77,6 +87,9 @@ namespace ImageGlass.UI {
         #region Protected methods
         protected override void OnMouseMove(MouseEventArgs mea) {
             base.OnMouseMove(mea);
+
+            if (HideTooltips) return;
+
             var newMouseOverItem = this.GetItemAt(mea.Location);
             if (mouseOverItem != newMouseOverItem ||
                 (Math.Abs(mouseOverPoint.X - mea.X) > SystemInformation.MouseHoverSize.Width || (Math.Abs(mouseOverPoint.Y - mea.Y) > SystemInformation.MouseHoverSize.Height))) {
@@ -107,8 +120,6 @@ namespace ImageGlass.UI {
             base.OnMouseLeave(e);
             timer.Stop();
             Tooltip.Hide(this);
-            mouseOverPoint = new Point(-50, -50);
-            mouseOverItem = null;
         }
 
         private void timer_Tick(object sender, EventArgs e) {
@@ -116,7 +127,7 @@ namespace ImageGlass.UI {
             try {
                 Point currentMouseOverPoint;
                 if (ToolTipShowUp) {
-                    currentMouseOverPoint = this.PointToClient(new Point(Control.MousePosition.X, Control.MousePosition.Y - Cursor.Current.Size.Height + Cursor.Current.HotSpot.Y));
+                    currentMouseOverPoint = this.PointToClient(new Point(Control.MousePosition.X, Control.MousePosition.Y - Cursor.Current.Size.Height + Cursor.Current.HotSpot.Y - this.Height / 2));
                 }
                 else {
                     currentMouseOverPoint = this.PointToClient(new Point(Control.MousePosition.X, Control.MousePosition.Y + Cursor.Current.Size.Height - Cursor.Current.HotSpot.Y));
@@ -128,20 +139,13 @@ namespace ImageGlass.UI {
                     }
                 }
                 // TODO: revisit this; toolbar buttons like to disappear, if changed.
-                else if ((!(mouseOverItem is ToolStripDropDownButton) && !(mouseOverItem is ToolStripSplitButton)) ||
+                else if (((!(mouseOverItem is ToolStripDropDownButton) && !(mouseOverItem is ToolStripSplitButton)) ||
 #pragma warning disable IDE0038 // Use pattern matching
-#pragma warning disable RCS1220 // Use pattern matching instead of combination of 'is' operator and cast operator.
                     ((mouseOverItem is ToolStripDropDownButton) && !((ToolStripDropDownButton)mouseOverItem).DropDown.Visible) ||
-#pragma warning restore RCS1220 // Use pattern matching instead of combination of 'is' operator and cast operator.
 #pragma warning restore IDE0038 // Use pattern matching
 #pragma warning disable IDE0038 // Use pattern matching
-#pragma warning disable RCS1220 // Use pattern matching instead of combination of 'is' operator and cast operator.
-                    ((mouseOverItem is ToolStripSplitButton) && !((ToolStripSplitButton)mouseOverItem).DropDown.Visible)) {
-#pragma warning restore RCS1220 // Use pattern matching instead of combination of 'is' operator and cast operator.
-#pragma warning restore IDE0038 // Use pattern matching
-                    if (!string.IsNullOrEmpty(mouseOverItem.ToolTipText) && Tooltip != null) {
-                        Tooltip.Show(mouseOverItem.ToolTipText, this, currentMouseOverPoint, ToolTipInterval);
-                    }
+                    ((mouseOverItem is ToolStripSplitButton) && !((ToolStripSplitButton)mouseOverItem).DropDown.Visible)) && !string.IsNullOrEmpty(mouseOverItem.ToolTipText) && Tooltip != null) {
+                    Tooltip.Show(mouseOverItem.ToolTipText, this, currentMouseOverPoint, ToolTipInterval);
                 }
             }
             catch { }

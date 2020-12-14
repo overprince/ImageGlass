@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -30,17 +30,17 @@ namespace ImageGlass.Services {
         /// <summary>
         /// Convert an Explorer column name to one of our currently available sorting orders.
         /// </summary>
-        private static readonly Dictionary<string, ImageOrderBy> SortTranslation = new Dictionary<string, ImageOrderBy>()
+        private static readonly Dictionary<string, ImageOrderBy> SortTranslation = new()
         {
             { "System.DateModified", ImageOrderBy.LastWriteTime },
             { "System.ItemDate", ImageOrderBy.LastWriteTime },
-            { "System.ItemTypeText", ImageOrderBy.Extension},
-            { "System.FileExtension", ImageOrderBy.Extension},
-            { "System.FileName", ImageOrderBy.Name},
-            { "System.ItemNameDisplay", ImageOrderBy.Name},
+            { "System.ItemTypeText", ImageOrderBy.Extension },
+            { "System.FileExtension", ImageOrderBy.Extension },
+            { "System.FileName", ImageOrderBy.Name },
+            { "System.ItemNameDisplay", ImageOrderBy.Name },
             { "System.Size", ImageOrderBy.Length },
-            { "System.DateCreated", ImageOrderBy.CreationTime},
-            { "System.DateAccessed", ImageOrderBy.LastAccessTime},
+            { "System.DateCreated", ImageOrderBy.CreationTime },
+            { "System.DateAccessed", ImageOrderBy.LastAccessTime },
         };
 
         [DllImport("ExplorerSortOrder32.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, EntryPoint = "GetExplorerSortOrder")]

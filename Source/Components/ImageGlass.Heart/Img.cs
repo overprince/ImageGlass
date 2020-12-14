@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -17,11 +17,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-using ImageMagick;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Threading.Tasks;
+using ImageMagick;
 
 namespace ImageGlass.Heart {
     public sealed class Img: IDisposable {
@@ -173,7 +173,7 @@ namespace ImageGlass.Heart {
         /// </summary>
         /// <param name="destFolder">The destination folder to save to</param>
         /// <returns></returns>
-        public async Task SaveImagePages(string destFolder) {
+        public async Task SaveImagePagesAsync(string destFolder) {
             await Photo.SavePagesAsync(Filename, destFolder).ConfigureAwait(true);
         }
 

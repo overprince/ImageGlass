@@ -1,7 +1,7 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
-Project homepage: http://imageglass.org
+Copyright (C) 2021 DUONG DIEU PHAP
+Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -60,9 +60,7 @@ namespace ImageGlass.Library {
             return false;
         }
 
-#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
         [DllImport("shlwapi.dll", CharSet = CharSet.Auto)]
-#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
         private static extern bool PathCompactPathEx([Out] StringBuilder pszOut, string szPath, int cchMax, int dwFlags);
 
         /// <summary>

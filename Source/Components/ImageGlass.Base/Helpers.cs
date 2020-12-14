@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -22,12 +22,16 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace ImageGlass.Base {
     /// <summary>
     /// The helper functions used globally
     /// </summary>
     public static class Helpers {
+
+        #region Public functions
+
         /// <summary>
         /// Check if the given path (file or directory) is writable.
         /// </summary>
@@ -129,12 +133,29 @@ namespace ImageGlass.Base {
         /// <param name="rect"></param>
         /// <returns></returns>
         public static bool IsVisibleOnAnyScreen(Rectangle rect) {
-            foreach (var screen in System.Windows.Forms.Screen.AllScreens) {
+            foreach (var screen in Screen.AllScreens) {
                 if (screen.WorkingArea.IntersectsWith(rect))
                     return true;
             }
             return false;
         }
+
+
+        /// <summary>
+        /// Get all controls by type
+        /// </summary>
+        /// <param name="control"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static IEnumerable<Control> GetAllControls(Control control, Type type) {
+            var controls = control.Controls.Cast<Control>();
+
+            return controls.SelectMany(ctrl => GetAllControls(ctrl, type))
+                                      .Concat(controls)
+                                      .Where(c => c.GetType() == type);
+        }
+
+        #endregion
 
 
         #region Private functions

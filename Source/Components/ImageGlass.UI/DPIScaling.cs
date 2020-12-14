@@ -1,7 +1,7 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
-Project homepage: http://imageglass.org
+Copyright (C) 2021 DUONG DIEU PHAP
+Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -95,10 +95,13 @@ namespace ImageGlass.UI {
         /// <summary>
         /// Transform a number to a new number after applying DPI Scale Factor
         /// </summary>
-        /// <param name="num"></param>
+        /// <param name="num">A float number</param>
         /// <returns></returns>
-        public static double Transform(double num) {
-            return num * GetDPIScaleFactor();
+        public static T Transform<T>(float num) {
+            var type = typeof(T);
+            var value = num * GetDPIScaleFactor();
+
+            return (T)Convert.ChangeType(value, type);
         }
 
         /// <summary>
@@ -111,11 +114,14 @@ namespace ImageGlass.UI {
         }
 
         /// <summary>
-        /// Apply DPI scale factor and transform toolbar
+        /// Apply DPI scale factor, icon height and transform toolbar
         /// </summary>
         /// <param name="toolbar">The toolbar to update</param>
-        /// <param name="baseHeight">The base height of toolbar</param>
-        public static void TransformToolbar(ref ToolStripToolTip toolbar, int baseHeight) {
+        /// <param name="iconHeight">The height of toolbar icons</param>
+        public static void TransformToolbar(ref ToolStripToolTip toolbar, int iconHeight) {
+            // The base height of toolbar
+            var baseHeight = iconHeight * 2;
+
             // Update size of toolbar
             toolbar.Height = Transform(baseHeight);
 
@@ -133,7 +139,7 @@ namespace ImageGlass.UI {
             }
 
             // get correct icon height
-            var hIcon = ThemeImage.GetCorrectBaseIconHeight();
+            var hIcon = Transform(iconHeight);
 
             // Tool bar separators
             foreach (var item in toolbar.Items.OfType<ToolStripSeparator>()) {

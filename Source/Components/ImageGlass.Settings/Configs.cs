@@ -1,7 +1,7 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
-Project homepage: http://imageglass.org
+Copyright (C) 2021 DUONG DIEU PHAP
+Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,18 +17,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-using ImageGlass.Base;
-using ImageGlass.Library;
-using ImageGlass.Library.FileAssociations;
-using ImageGlass.UI;
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using ImageGlass.Base;
+using ImageGlass.Library;
+using ImageGlass.Library.FileAssociations;
+using ImageGlass.Library.WinAPI;
+using ImageGlass.UI;
+using Microsoft.Win32;
 
 namespace ImageGlass.Settings {
     /// <summary>
@@ -38,16 +38,17 @@ namespace ImageGlass.Settings {
         /// <summary>
         /// Configuration Source file
         /// </summary>
-        private static ConfigSource Source { get; } = new ConfigSource();
+        private static ConfigSource Source { get; } = new();
 
         /// <summary>
         /// Check if the config file is compatible with this ImageGlass version or not.
         /// </summary>
         public static bool IsCompatible => Source.IsCompatible;
 
+
         #region Public configs
 
-        #region bool items
+        #region Boolean items
         /// <summary>
         /// Gets, sets value of slideshow state
         /// </summary>
@@ -92,6 +93,11 @@ namespace ImageGlass.Settings {
         /// Check if user wants to display HSL with Alpha color code for Color Picker tool
         /// </summary>
         public static bool IsColorPickerHSLA { get; set; } = true;
+
+        /// <summary>
+        /// Check if user wants to display HSV with Alpha color code for Color Picker tool
+        /// </summary>
+        public static bool IsColorPickerHSVA { get; set; } = true;
 
         /// <summary>
         /// Gets, sets welcome picture value
@@ -214,6 +220,11 @@ namespace ImageGlass.Settings {
         public static bool IsUseFileExplorerSortOrder { get; set; } = true;
 
         /// <summary>
+        /// Gets, sets the value indicates that images order should be grouped by directory
+        /// </summary>
+        public static bool IsGroupImagesByDirectory { get; set; } = false;
+
+        /// <summary>
         /// Gets, sets showing/loading hidden images
         /// </summary>
         public static bool IsShowingHiddenImages { get; set; } = false;
@@ -253,7 +264,23 @@ namespace ImageGlass.Settings {
         /// </summary>
         public static bool IsUseTouchGesture { get; set; } = true;
 
+        /// <summary>
+        /// Gets, sets value indicates that tooltips are to be hidden
+        /// </summary>
+        public static bool IsHideTooltips { get; set; } = false;
+
+        /// <summary>
+        /// Gets, sets value indicates that FrmExifTool always show on top
+        /// </summary>
+        public static bool IsExifToolAlwaysOnTop { get; set; } = true;
+
+        /// <summary>
+        /// Gets, sets value indicates that to keep the title bar of frmMain empty
+        /// </summary>
+        public static bool IsUseEmptyTitleBar { get; set; } = false;
+
         #endregion
+
 
         #region Number items
 
@@ -292,7 +319,18 @@ namespace ImageGlass.Settings {
         /// </summary>
         public static double ZoomLockValue { get; set; } = 100f;
 
+        /// <summary>
+        /// Gets, sets toolbar icon height
+        /// </summary>
+        public static uint ToolbarIconHeight { get; set; } = Constants.DEFAULT_TOOLBAR_ICON_HEIGHT;
+
+        /// <summary>
+        /// Gets, sets value of image quality for editting
+        /// </summary>
+        public static int ImageEditQuality { get; set; } = 100;
+
         #endregion
+
 
         #region String items
 
@@ -311,7 +349,13 @@ namespace ImageGlass.Settings {
         /// </summary>
         public static string LastSeenImagePath { get; set; } = "";
 
+        /// <summary>
+        /// Gets, sets the absolute file path of the exiftool executable file
+        /// </summary>
+        public static string ExifToolExePath { get; set; } = "";
+
         #endregion
+
 
         #region Array items
 
@@ -323,12 +367,12 @@ namespace ImageGlass.Settings {
         /// <summary>
         /// Gets, sets the list of Image Editing Association
         /// </summary>
-        public static List<EditApp> EditApps { get; set; } = new List<EditApp>();
+        public static List<EditApp> EditApps { get; set; } = new();
 
         /// <summary>
         /// Gets, sets the list of supported image formats
         /// </summary>
-        public static HashSet<string> AllFormats { get; set; } = new HashSet<string>();
+        public static HashSet<string> AllFormats { get; set; } = new();
 
         /// <summary>
         /// Gets, sets the list of keycombo actions
@@ -342,6 +386,7 @@ namespace ImageGlass.Settings {
 
         #endregion
 
+
         #region Enum items
 
         /// <summary>
@@ -353,6 +398,11 @@ namespace ImageGlass.Settings {
         /// Gets, sets state of settings window
         /// </summary>
         public static FormWindowState FrmSettingsWindowState { get; set; } = FormWindowState.Normal;
+
+        /// <summary>
+        /// Gets, sets state of exif tool window
+        /// </summary>
+        public static FormWindowState FrmExifToolWindowState { get; set; } = FormWindowState.Normal;
 
         /// <summary>
         /// Gets, sets image loading order
@@ -399,7 +449,13 @@ namespace ImageGlass.Settings {
         /// </summary>
         public static ToolbarPosition ToolbarPosition { get; set; } = ToolbarPosition.Top;
 
+        /// <summary>
+        /// Gets, sets value indicates what happens after clicking Edit menu
+        /// </summary>
+        public static AfterOpeningEditAppAction AfterEditingAction { get; set; } = AfterOpeningEditAppAction.Nothing;
+
         #endregion
+
 
         #region Other types items
 
@@ -411,26 +467,32 @@ namespace ImageGlass.Settings {
         /// <summary>
         /// Gets, sets window bound of main form
         /// </summary>
-        public static Rectangle FrmMainWindowsBound { get; set; } = new Rectangle(280, 125, 1300, 800);
+        public static Rectangle FrmMainWindowBound { get; set; } = new(280, 125, 1300, 800);
 
         /// <summary>
         /// Gets, sets window bound of main form
         /// </summary>
-        public static Rectangle FrmSettingsWindowsBound { get; set; } = new Rectangle(280, 125, 1050, 750);
+        public static Rectangle FrmSettingsWindowBound { get; set; } = new(280, 125, 1050, 750);
+
+        /// <summary>
+        /// Gets, sets window bound of exif tool form
+        /// </summary>
+        public static Rectangle FrmExifToolWindowBound { get; set; } = new(280, 125, 800, 600);
 
         /// <summary>
         /// Gets, sets language pack
         /// </summary>
-        public static Language Language { get; set; } = new Language();
+        public static Language Language { get; set; } = new();
 
         /// <summary>
         /// Gets, sets theme
         /// </summary>
-        public static Theme Theme { get; set; } = new Theme();
+        public static Theme Theme { get; set; }
 
         #endregion
 
         #endregion
+
 
         #region Private methods
 
@@ -472,6 +534,7 @@ namespace ImageGlass.Settings {
 
         #endregion
 
+
         #region Public methods
 
         /// <summary>
@@ -493,6 +556,7 @@ namespace ImageGlass.Settings {
             IsColorPickerRGBA = Get<bool>(nameof(IsColorPickerRGBA), IsColorPickerRGBA);
             IsColorPickerHEXA = Get<bool>(nameof(IsColorPickerHEXA), IsColorPickerHEXA);
             IsColorPickerHSLA = Get<bool>(nameof(IsColorPickerHSLA), IsColorPickerHSLA);
+            IsColorPickerHSVA = Get<bool>(nameof(IsColorPickerHSVA), IsColorPickerHSVA);
             IsShowWelcome = Get<bool>(nameof(IsShowWelcome), IsShowWelcome);
             IsShowToolBar = Get<bool>(nameof(IsShowToolBar), IsShowToolBar);
             IsShowThumbnailScrollbar = Get<bool>(nameof(IsShowThumbnailScrollbar), IsShowThumbnailScrollbar);
@@ -517,6 +581,7 @@ namespace ImageGlass.Settings {
             IsShowCheckerboardOnlyImageRegion = Get<bool>(nameof(IsShowCheckerboardOnlyImageRegion), IsShowCheckerboardOnlyImageRegion);
             IsRecursiveLoading = Get<bool>(nameof(IsRecursiveLoading), IsRecursiveLoading);
             IsUseFileExplorerSortOrder = Get<bool>(nameof(IsUseFileExplorerSortOrder), IsUseFileExplorerSortOrder);
+            IsGroupImagesByDirectory = Get<bool>(nameof(IsGroupImagesByDirectory), IsGroupImagesByDirectory);
             IsShowingHiddenImages = Get<bool>(nameof(IsShowingHiddenImages), IsShowingHiddenImages);
             IsShowColorPickerOnStartup = Get<bool>(nameof(IsShowColorPickerOnStartup), IsShowColorPickerOnStartup);
             IsShowPageNavOnStartup = Get<bool>(nameof(IsShowPageNavOnStartup), IsShowPageNavOnStartup);
@@ -525,6 +590,9 @@ namespace ImageGlass.Settings {
             IsCenterWindowFit = Get<bool>(nameof(IsCenterWindowFit), IsCenterWindowFit);
             IsShowToast = Get<bool>(nameof(IsShowToast), IsShowToast);
             IsUseTouchGesture = Get<bool>(nameof(IsUseTouchGesture), IsUseTouchGesture);
+            IsHideTooltips = Get<bool>(nameof(IsHideTooltips), IsHideTooltips);
+            IsExifToolAlwaysOnTop = Get<bool>(nameof(IsExifToolAlwaysOnTop), IsExifToolAlwaysOnTop);
+            IsUseEmptyTitleBar = Get<bool>(nameof(IsUseEmptyTitleBar), IsUseEmptyTitleBar);
 
             #endregion
 
@@ -561,12 +629,16 @@ namespace ImageGlass.Settings {
             ZoomLockValue = Get<double>(nameof(ZoomLockValue), ZoomLockValue);
             if (ZoomLockValue < 0) ZoomLockValue = 100f;
 
+            ToolbarIconHeight = Get<uint>(nameof(ToolbarIconHeight), ToolbarIconHeight);
+            ImageEditQuality = Get<int>(nameof(ImageEditQuality), ImageEditQuality);
+
             #endregion
 
             #region Enum items
 
             FrmMainWindowState = Get<FormWindowState>(nameof(FrmMainWindowState), FrmMainWindowState);
             FrmSettingsWindowState = Get<FormWindowState>(nameof(FrmSettingsWindowState), FrmSettingsWindowState);
+            FrmExifToolWindowState = Get<FormWindowState>(nameof(FrmExifToolWindowState), FrmExifToolWindowState);
             ImageLoadingOrder = Get<ImageOrderBy>(nameof(ImageLoadingOrder), ImageLoadingOrder);
             ImageLoadingOrderType = Get<ImageOrderType>(nameof(ImageLoadingOrderType), ImageLoadingOrderType);
             MouseWheelAction = Get<MouseWheelActions>(nameof(MouseWheelAction), MouseWheelAction);
@@ -576,6 +648,8 @@ namespace ImageGlass.Settings {
             ZoomMode = Get<ZoomMode>(nameof(ZoomMode), ZoomMode);
             ZoomOptimizationMethod = Get<ZoomOptimizationMethods>(nameof(ZoomOptimizationMethod), ZoomOptimizationMethod);
             ToolbarPosition = Get<ToolbarPosition>(nameof(ToolbarPosition), ToolbarPosition);
+            AfterEditingAction = Get<AfterOpeningEditAppAction>(nameof(AfterEditingAction), AfterEditingAction);
+
 
             #endregion
 
@@ -586,6 +660,7 @@ namespace ImageGlass.Settings {
 
             AutoUpdate = Get<string>(nameof(AutoUpdate), AutoUpdate);
             LastSeenImagePath = Get<string>(nameof(LastSeenImagePath), LastSeenImagePath);
+            ExifToolExePath = Get<string>(nameof(ExifToolExePath), ExifToolExePath);
 
             #endregion
 
@@ -635,20 +710,20 @@ namespace ImageGlass.Settings {
 
             #region Other types items
 
-            #region FrmMainWindowsBound
-            var boundStr = Get<string>(nameof(FrmMainWindowsBound), "");
+            #region FrmMainWindowBound
+            var boundStr = Get<string>(nameof(FrmMainWindowBound), "");
             if (!string.IsNullOrEmpty(boundStr)) {
                 var rc = Helpers.StringToRect(boundStr);
                 if (!Helper.IsAnyPartOnScreen(rc)) {
                     rc = new Rectangle(280, 125, 1000, 800);
                 }
 
-                FrmMainWindowsBound = rc;
+                FrmMainWindowBound = rc;
             }
             #endregion
 
-            #region FrmSettingsWindowsBound
-            boundStr = Get<string>(nameof(FrmSettingsWindowsBound), "");
+            #region FrmSettingsWindowBound
+            boundStr = Get<string>(nameof(FrmSettingsWindowBound), "");
             if (!string.IsNullOrEmpty(boundStr)) {
                 var rc = Helpers.StringToRect(boundStr);
 
@@ -656,7 +731,20 @@ namespace ImageGlass.Settings {
                     rc.Location = new Point(280, 125);
                 }
 
-                FrmSettingsWindowsBound = rc;
+                FrmSettingsWindowBound = rc;
+            }
+            #endregion
+
+            #region FrmExifToolWindowBound
+            boundStr = Get<string>(nameof(FrmExifToolWindowBound), "");
+            if (!string.IsNullOrEmpty(boundStr)) {
+                var rc = Helpers.StringToRect(boundStr);
+
+                if (!Helper.IsOnScreen(rc.Location)) {
+                    rc.Location = new Point(280, 125);
+                }
+
+                FrmExifToolWindowBound = rc;
             }
             #endregion
 
@@ -666,8 +754,8 @@ namespace ImageGlass.Settings {
             #endregion
 
             #region Theme
-            var themeFolderName = Get<string>(nameof(Theme), Dir.DefaultTheme);
-            var th = new Theme(App.ConfigDir(PathType.Dir, Dir.Themes, themeFolderName));
+            var themeFolderName = Get<string>(nameof(Theme), Constants.DEFAULT_THEME);
+            var th = new Theme((int)ToolbarIconHeight, App.ConfigDir(PathType.Dir, Dir.Themes, themeFolderName));
 
             if (th.IsValid) {
                 Theme = th;
@@ -700,6 +788,7 @@ namespace ImageGlass.Settings {
             Set(nameof(IsColorPickerRGBA), IsColorPickerRGBA);
             Set(nameof(IsColorPickerHEXA), IsColorPickerHEXA);
             Set(nameof(IsColorPickerHSLA), IsColorPickerHSLA);
+            Set(nameof(IsColorPickerHSVA), IsColorPickerHSVA);
             Set(nameof(IsShowWelcome), IsShowWelcome);
             Set(nameof(IsShowToolBar), IsShowToolBar);
             Set(nameof(IsShowThumbnailScrollbar), IsShowThumbnailScrollbar);
@@ -724,6 +813,7 @@ namespace ImageGlass.Settings {
             Set(nameof(IsShowCheckerboardOnlyImageRegion), IsShowCheckerboardOnlyImageRegion);
             Set(nameof(IsRecursiveLoading), IsRecursiveLoading);
             Set(nameof(IsUseFileExplorerSortOrder), IsUseFileExplorerSortOrder);
+            Set(nameof(IsGroupImagesByDirectory), IsGroupImagesByDirectory);
             Set(nameof(IsShowingHiddenImages), IsShowingHiddenImages);
             Set(nameof(IsShowColorPickerOnStartup), IsShowColorPickerOnStartup);
             Set(nameof(IsShowPageNavOnStartup), IsShowPageNavOnStartup);
@@ -732,6 +822,9 @@ namespace ImageGlass.Settings {
             Set(nameof(IsCenterWindowFit), IsCenterWindowFit);
             Set(nameof(IsShowToast), IsShowToast);
             Set(nameof(IsUseTouchGesture), IsUseTouchGesture);
+            Set(nameof(IsHideTooltips), IsHideTooltips);
+            Set(nameof(IsExifToolAlwaysOnTop), IsExifToolAlwaysOnTop);
+            Set(nameof(IsUseEmptyTitleBar), IsUseEmptyTitleBar);
 
             #endregion
 
@@ -744,6 +837,8 @@ namespace ImageGlass.Settings {
             Set(nameof(ThumbnailBarWidth), ThumbnailBarWidth);
             Set(nameof(ImageBoosterCachedCount), ImageBoosterCachedCount);
             Set(nameof(ZoomLockValue), ZoomLockValue);
+            Set(nameof(ToolbarIconHeight), ToolbarIconHeight);
+            Set(nameof(ImageEditQuality), ImageEditQuality);
 
             #endregion
 
@@ -751,6 +846,7 @@ namespace ImageGlass.Settings {
 
             Set(nameof(FrmMainWindowState), FrmMainWindowState);
             Set(nameof(FrmSettingsWindowState), FrmSettingsWindowState);
+            Set(nameof(FrmExifToolWindowState), FrmExifToolWindowState);
             Set(nameof(ImageLoadingOrder), ImageLoadingOrder);
             Set(nameof(ImageLoadingOrderType), ImageLoadingOrderType);
             Set(nameof(MouseWheelAction), MouseWheelAction);
@@ -760,6 +856,7 @@ namespace ImageGlass.Settings {
             Set(nameof(ZoomMode), ZoomMode);
             Set(nameof(ZoomOptimizationMethod), ZoomOptimizationMethod);
             Set(nameof(ToolbarPosition), ToolbarPosition);
+            Set(nameof(AfterEditingAction), AfterEditingAction);
 
             #endregion
 
@@ -769,6 +866,7 @@ namespace ImageGlass.Settings {
             Set(nameof(ToolbarButtons), ToolbarButtons);
             Set(nameof(AutoUpdate), AutoUpdate);
             Set(nameof(LastSeenImagePath), LastSeenImagePath);
+            Set(nameof(ExifToolExePath), ExifToolExePath);
 
             #endregion
 
@@ -785,16 +883,19 @@ namespace ImageGlass.Settings {
             #region Other types items
 
             Set(nameof(BackgroundColor), Theme.ConvertColorToHEX(BackgroundColor, true));
-            Set(nameof(FrmMainWindowsBound), Helpers.RectToString(FrmMainWindowsBound));
-            Set(nameof(FrmSettingsWindowsBound), Helpers.RectToString(FrmSettingsWindowsBound));
+            Set(nameof(FrmMainWindowBound), Helpers.RectToString(FrmMainWindowBound));
+            Set(nameof(FrmSettingsWindowBound), Helpers.RectToString(FrmSettingsWindowBound));
+            Set(nameof(FrmExifToolWindowBound), Helpers.RectToString(FrmExifToolWindowBound));
             Set(nameof(Language), Path.GetFileName(Language.FileName));
             Set(nameof(Theme), Theme.FolderName);
 
             #endregion
 
+
             // write user configs to file
             Source.WriteUserConfigs();
         }
+
 
         #region Helper functions
 
@@ -850,6 +951,7 @@ namespace ImageGlass.Settings {
         }
 
         #endregion
+
 
         #region Config functions
 
@@ -1029,7 +1131,32 @@ namespace ImageGlass.Settings {
 
         #endregion
 
+
+        /// <summary>
+        /// Apply theme colors and logo to form
+        /// </summary>
+        /// <param name="frm"></param>
+        /// <param name="th"></param>
+        public static void ApplyFormTheme(Form frm, Theme th) {
+            // load theme colors
+            foreach (var ctr in Helpers.GetAllControls(frm, typeof(LinkLabel))) {
+                if (ctr is LinkLabel lnk) {
+                    lnk.LinkColor = lnk.VisitedLinkColor = th.AccentColor;
+                }
+            }
+
+            // Icon theming
+            if (!th.IsShowTitlebarLogo) {
+                frm.Icon = Icon.FromHandle(new Bitmap(64, 64).GetHicon());
+                FormIcon.SetTaskbarIcon(frm, th.Logo.Image.GetHicon());
+            }
+            else {
+                frm.Icon = Icon.FromHandle(th.Logo.Image.GetHicon());
+            }
+        }
+
         #endregion
+
 
         #endregion
 

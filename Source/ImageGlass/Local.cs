@@ -1,6 +1,6 @@
 ﻿/*
 ImageGlass Project - Image viewer for Windows
-Copyright (C) 2020 DUONG DIEU PHAP
+Copyright (C) 2021 DUONG DIEU PHAP
 Project homepage: https://imageglass.org
 
 This program is free software: you can redistribute it and/or modify
@@ -17,13 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using ImageGlass.Base;
 using ImageGlass.Heart;
 using ImageGlass.UI;
 using ImageMagick;
-using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace ImageGlass {
     public static class Local {
@@ -31,6 +31,9 @@ namespace ImageGlass {
         private static frmColorPicker _fColorPicker;
         private static frmPageNav _fPageNav;
         private static frmCrop _fCrop;
+        private static FrmExifTool _fExifTool;
+
+
 
         #region Auto Properties
 
@@ -42,7 +45,7 @@ namespace ImageGlass {
         /// <summary>
         /// Gets, sets image list
         /// </summary>
-        public static Factory ImageList { get; set; } = new Factory();
+        public static Factory ImageList { get; set; } = new();
 
         /// <summary>
         /// Gets, sets image error value
@@ -79,7 +82,7 @@ namespace ImageGlass {
         /// <summary>
         /// Gets, sets copied filename collection (multi-copy)
         /// </summary>
-        public static List<string> StringClipboard { get; set; } = new List<string>();
+        public static List<string> StringClipboard { get; set; } = new();
 
         /// <summary>
         /// Gets, sets value indicating that the image we are processing is memory data (clipboard / screenshot,...) or not
@@ -143,9 +146,16 @@ namespace ImageGlass {
         /// <summary>
         /// Gets, sets the list of navigation regions
         /// </summary>
-        public static List<NavigationRegion> NavRegions { get; set; } = new List<NavigationRegion>();
+        public static List<NavigationRegion> NavRegions { get; set; } = new();
+
+
+        /// <summary>
+        /// Gets, sets image changed event handler
+        /// </summary>
+        public static event EventHandler OnImageChanged;
 
         #endregion
+
 
         #region LazyInitializer Properties
         /// <summary>
@@ -180,9 +190,29 @@ namespace ImageGlass {
             set => _fCrop = value;
         }
 
+        /// <summary>
+        /// Form FrmExif
+        /// </summary>
+        public static FrmExifTool FExifTool {
+            get => LazyInitializer.EnsureInitialized(ref _fExifTool);
+            set => _fExifTool = value;
+        }
+
         #endregion
 
+
+        /// <summary>
+        /// Raise an event when the viewing image changed
+        /// </summary>
+        public static void RaiseImageChangedEvent() {
+            var handler = OnImageChanged;
+
+            handler?.Invoke(null, EventArgs.Empty);
+        }
+
     }
+
+
 }
 
 
